@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "wasteland.clock",
+  "name": "Wasteland Clock",
+  "version": "1.0.0",
+  "author": "Matt Volz",
+  "description": "Clock (clone of omarchy.clock): 15.NOV.2026 13:37 style while the Wasteland status strip is on.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Wasteland Clock",
+    "description": "Date/time label with a calendar popup",
+    "category": "Time",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.clock"
+  }
+}

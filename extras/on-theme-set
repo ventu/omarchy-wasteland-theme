@@ -1,0 +1,59 @@
+#!/bin/bash
+# Wasteland theme extras: boot animation, terminal lock screen, CRT power
+# effects, overseer screensaver, bar tabs and status strip. On while Wasteland
+# is the current theme, off for every other theme.
+#
+# Called by ~/.config/omarchy/hooks/theme-set.d/20-wasteland-extras (installed
+# by extras/install.sh) with the theme name. It only writes one small state
+# file, ~/.local/state/omarchy/wasteland-extras.json, which the Wasteland
+# plugins and scripts watch. It never edits shell.json.
+#
+# Switches: features.conf next to this script holds the defaults;
+# ~/.config/omarchy/wasteland/features.conf overrides them. To apply a change
+# without switching themes:
+#   bash ~/.config/omarchy/themes/wasteland/extras/on-theme-set "$(cat ~/.local/state/omarchy/current/theme.name)"
+set -u
+
+THEME="${1:-}"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy"
+STATE="$STATE_DIR/wasteland-extras.json"
+USER_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/wasteland/features.conf"
+
+BOOT=1 LOCK_VIEW=1 CRT=1 SCREENSAVER=1 BAR_TABS=1 STATUS_STRIP=1
+read_conf() {
+  # Only plain NAME=0/1 lines are read; nothing in the file is executed.
+  local key value
+  [[ -f $1 ]] || return 0
+  while IFS='=' read -r key value; do
+    value=${value:0:1}
+    case "$key" in
+      BOOT | LOCK_VIEW | CRT | SCREENSAVER | BAR_TABS | STATUS_STRIP) [[ $value == [01] ]] && printf -v "$key" '%s' "$value" ;;
+    esac
+  done < <(grep -E '^(BOOT|LOCK_VIEW|CRT|SCREENSAVER|BAR_TABS|STATUS_STRIP)=[01]' "$1")
+}
+read_conf "$DIR/features.conf"
+read_conf "$USER_CONF"
+
+if [[ $THEME != "wasteland" ]]; then
+  BOOT=0 LOCK_VIEW=0 CRT=0 SCREENSAVER=0 BAR_TABS=0 STATUS_STRIP=0
+fi
+
+flag() { [[ $1 == 1 ]] && echo true || echo false; }
+view=stock
+[[ $LOCK_VIEW == 1 ]] && view=terminal
+
+mkdir -p "$STATE_DIR"
+existed=0
+[[ -f $STATE ]] && existed=1
+# Written in place (not renamed) so the plugins' file watches see it.
+printf '{"theme":"%s","boot":%s,"lockView":"%s","crt":%s,"screensaver":%s,"barTabs":%s,"statusStrip":%s}\n' \
+  "${THEME//\"/}" "$(flag "$BOOT")" "$view" "$(flag "$CRT")" "$(flag "$SCREENSAVER")" "$(flag "$BAR_TABS")" "$(flag "$STATUS_STRIP")" > "$STATE"
+
+# The plugins only watch a file that existed when the shell started. install.sh
+# writes it before enabling them, so this is only a fallback. omarchy-restart-shell
+# itself refuses to restart while the session is locked.
+if (( ! existed )); then
+  setsid -f bash -c 'sleep 2; omarchy-restart-shell' >/dev/null 2>&1 < /dev/null
+fi
+exit 0

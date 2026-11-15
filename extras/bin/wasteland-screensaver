@@ -1,0 +1,36 @@
+#!/bin/bash
+# Wasteland theme screensaver launcher.
+#
+# The idle service (wasteland.idle, a clone of omarchy.idle) calls this instead of
+# omarchy-launch-screensaver. While Wasteland is the theme and SCREENSAVER=1 in
+# features.conf, it runs Omarchy's own launcher with the terminal command
+# swapped for overseer-screensaver, so the same terminals, window class
+# (org.omarchy.screensaver), fonts, per-monitor windows and on/off toggle
+# apply. Any other theme gets the stock Omarchy screensaver.
+#
+#   wasteland-screensaver force    preview now (works even if toggled off)
+#   wasteland-screensaver stock    always run Omarchy's stock screensaver
+STATE="$HOME/.local/state/omarchy/wasteland-extras.json"
+DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+SAVER="$DIR/overseer-screensaver"
+STOCK="$(command -v omarchy-launch-screensaver)"
+
+on=$(jq -r '.screensaver // false' "$STATE" 2>/dev/null)
+if [[ $1 == stock ]]; then
+  shift
+  on=false
+fi
+if [[ $on != true || ! -x $SAVER || -z $STOCK ]]; then
+  exec omarchy-launch-screensaver "$@"
+fi
+
+# Run a copy of the stock launcher with only its terminal command changed.
+# It runs from a file, not bash -c, because the launcher's own pgrep for the
+# screensaver class would otherwise match this script's command line.
+copy="${XDG_RUNTIME_DIR:-/tmp}/wasteland-launch-screensaver"
+sed "s|-e omarchy-screensaver\$|-e $SAVER|" "$STOCK" > "$copy.tmp" && mv "$copy.tmp" "$copy"
+if [[ $(grep -c -- "-e $SAVER\$" "$copy") -lt 1 ]]; then
+  # Upstream changed the launcher: fall back to the stock screensaver.
+  exec "$STOCK" "$@"
+fi
+exec bash "$copy" "$@"

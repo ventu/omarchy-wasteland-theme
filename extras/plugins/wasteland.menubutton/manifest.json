@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "wasteland.menubutton",
+  "name": "Wasteland Menu Button",
+  "version": "1.0.0",
+  "author": "Matt Volz",
+  "description": "The Omarchy menu button; shows a radiation trefoil instead of the Omarchy logo while the Wasteland status strip is on.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Wasteland Menu Button",
+    "description": "Launches the Omarchy menu",
+    "category": "Compositor",
+    "allowMultiple": false
+  }
+}

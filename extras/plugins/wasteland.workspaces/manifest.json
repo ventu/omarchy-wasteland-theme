@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "wasteland.workspaces",
+  "name": "Wasteland Workspaces",
+  "version": "1.0.0",
+  "author": "Matt Volz",
+  "description": "Workspaces (clone of omarchy.workspaces): STAT/INV/DATA/MAP/RADIO tabs and the rust status strip while the Wasteland theme is on.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "tabs/Workspaces.qml"
+  },
+  "barWidget": {
+    "displayName": "Wasteland Workspaces",
+    "description": "Workspace number indicators",
+    "category": "Compositor",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.workspaces"
+  }
+}

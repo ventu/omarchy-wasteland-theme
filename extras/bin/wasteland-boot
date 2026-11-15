@@ -1,0 +1,393 @@
+#!/usr/bin/python3
+"""Wasteland post-login startup animation: a wrist-terminal boot screen in
+the theme's phosphor green (#8FBF6A). Original text and art.
+
+Opens a fullscreen Ghostty window (Foot if Ghostty is not installed). Runs
+only while the Wasteland extras say BOOT is on; `--force` runs it anyway.
+Any key skips it.
+"""
+
+from __future__ import annotations
+
+import os
+import random
+import select
+import shutil
+import signal
+import sys
+import termios
+import time
+import tty
+
+GREEN = "\033[38;2;143;191;106m"
+BG = "\033[48;2;0;0;0m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+HIDE = "\033[?25l"
+SHOW = "\033[?25h"
+CLEAR = "\033[2J\033[H"
+WRAP_OFF = "\033[?7l"
+WRAP_ON = "\033[?7h"
+STYLE = BG + GREEN
+
+BOOT_SECS = 6.8
+SPLASH_SECS = 1.5
+GHOSTTY = "/usr/bin/ghostty"
+FOOT = "/usr/bin/foot"
+CLASS = "org.wasteland.boot"
+
+SPLASH = [
+    "┌─────────────────────────────────────┐",
+    "│  WASTELAND TERMINAL OS     V1.0     │",
+    "│  PERSONAL INTERFACE OS              │",
+    "└─────────────────┬───────────────────┘",
+    "                  │",
+    "           ┌──────┴──────┐",
+    "           │  ┌───────┐  │",
+    "           │  │ o   o │  │",
+    "           │  │   -   │  │",
+    "           │  └───────┘  │",
+    "           │  [ READY ]  │",
+    "           └──────┬──────┘",
+    "              ────┴────",
+    "",
+    "         SYSTEM CHECK COMPLETE",
+    "    DISPLAY ............... ONLINE",
+    "    INPUT ................. ONLINE",
+    "    STORAGE ............... READY ",
+]
+
+skipped = False
+old_term = None
+fd = None
+PHASE_FILE = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "wasteland-boot.phase")
+
+
+def set_phase(name: str) -> None:
+    try:
+        with open(PHASE_FILE, "w", encoding="utf-8") as fh:
+            fh.write(name + "\n")
+    except OSError:
+        pass
+
+
+def _exe(path: str) -> bool:
+    return os.path.isfile(path) and os.access(path, os.X_OK)
+
+
+def launch_window() -> None:
+    """Open a dedicated window: Ghostty if installed, otherwise Foot."""
+    script = os.path.abspath(sys.argv[0])
+    if _exe(GHOSTTY):
+        os.execv(
+            GHOSTTY,
+            [
+                "ghostty",
+                "--gtk-single-instance=false",
+                f"--class={CLASS}",
+                "--title=wasteland-boot",
+                "--background=#000000",
+                "--foreground=#8FBF6A",
+                "--background-opacity=1",
+                "--window-decoration=false",
+                "--window-padding-x=24",
+                "--window-padding-y=16",
+                "--font-size=18",
+                "--cursor-style=block",
+                "--cursor-style-blink=false",
+                "--cursor-opacity=0",
+                "--confirm-close-surface=false",
+                "-e",
+                script,
+                "--direct",
+            ],
+        )
+    os.execv(
+        FOOT,
+        [
+            "foot",
+            f"--app-id={CLASS}",
+            "--title=wasteland-boot",
+            "-o", "colors-dark.background=000000",
+            "-o", "colors-dark.foreground=8FBF6A",
+            "-o", "colors-dark.alpha=1.0",
+            "-o", "pad=24x16",
+            "-o", "font=monospace:size=18",
+            "-o", "cursor.blink=no",
+            script,
+            "--direct",
+        ],
+    )
+
+
+def restore(_signum=None, _frame=None) -> None:
+    try:
+        if fd is not None and old_term is not None:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_term)
+    except termios.error:
+        pass
+    try:
+        sys.stdout.write(WRAP_ON + SHOW + RESET + "\n")
+        sys.stdout.flush()
+    except Exception:
+        pass
+    try:
+        if os.path.exists(PHASE_FILE):
+            os.unlink(PHASE_FILE)
+    except OSError:
+        pass
+    if _signum is not None:
+        sys.exit(0)
+
+
+def setup_tty() -> None:
+    global fd, old_term
+    if not sys.stdin.isatty():
+        return
+    fd = sys.stdin.fileno()
+    old_term = termios.tcgetattr(fd)
+    tty.setcbreak(fd)
+    signal.signal(signal.SIGINT, restore)
+    signal.signal(signal.SIGTERM, restore)
+
+
+def poll_skip(timeout: float = 0.0) -> bool:
+    global skipped
+    if skipped:
+        return True
+    if fd is None:
+        if timeout > 0:
+            time.sleep(timeout)
+        return False
+    ready, _, _ = select.select([fd], [], [], max(0.0, timeout))
+    if ready:
+        try:
+            os.read(fd, 64)
+        except OSError:
+            pass
+        skipped = True
+        return True
+    return False
+
+
+def pause(seconds: float) -> bool:
+    end = time.monotonic() + seconds
+    while True:
+        remaining = end - time.monotonic()
+        if remaining <= 0:
+            return skipped
+        if poll_skip(min(0.03, remaining)):
+            return True
+
+
+def write(text: str) -> None:
+    sys.stdout.write(text)
+    sys.stdout.flush()
+
+
+def cols() -> int:
+    return max(40, shutil.get_terminal_size((100, 32)).columns)
+
+
+def rows() -> int:
+    return max(24, shutil.get_terminal_size((100, 32)).lines)
+
+
+def put_line(text: str = "", end: str = "\n") -> None:
+    write(STYLE + text[: max(1, cols() - 1)] + end)
+
+
+def type_line(text: str, char_lo: float = 0.004, char_hi: float = 0.010) -> bool:
+    write(STYLE)
+    for ch in text[: max(1, cols() - 1)]:
+        write(ch)
+        if pause(random.uniform(char_lo, char_hi)):
+            return True
+    write("\n")
+    return skipped
+
+
+def dots_line(prefix: str, n: int = 18, ok: str = "  OK", step: float = 0.016) -> bool:
+    write(STYLE + prefix)
+    for _ in range(n):
+        write(".")
+        if pause(step + random.uniform(-0.01, 0.015)):
+            return True
+    write(ok + "\n")
+    return skipped
+
+
+def blank() -> None:
+    write(CLEAR + STYLE + HIDE + WRAP_OFF)
+
+
+def run_boot() -> bool:
+    """Return True if the user skipped."""
+    blank()
+    set_phase("boot")
+    start = time.monotonic()
+
+    if type_line("* UNIT   : PERSONAL INTERFACE PROCESSOR"):
+        return True
+    if type_line("* BUILD  : 1.0.0"):
+        return True
+    if type_line("* CLOCK  : 12.NOV.2077  00:00:01"):
+        return True
+    if pause(0.18):
+        return True
+    put_line()
+    if type_line("INITIATING STARTUP SEQUENCE..."):
+        return True
+    if pause(0.22):
+        return True
+    put_line()
+    put_line("MEMORY DIAGNOSTICS")
+    banks = [
+        ("  BANK 0  000000-01FFFF  ", 16),
+        ("  BANK 1  020000-03FFFF  ", 16),
+        ("  BANK 2  040000-05FFFF  ", 16),
+        ("  BANK 3  060000-07FFFF  ", 16),
+        ("  BANK 4  080000-09FFFF  ", 16),
+        ("  BANK 5  0A0000-0BFFFF  ", 16),
+    ]
+    for prefix, n in banks:
+        if dots_line(prefix, n=n, step=0.014):
+            return True
+    if pause(0.16):
+        return True
+    put_line()
+    put_line("I/O MAP")
+    dumps = [
+        "  0x0000F000  48 4F 53 54  20 43 48 4B  20 4F 4B 00  00 00 00 00",
+        "  0x0000F010  4D 45 4D 20  43 48 45 43  4B 20 50 41  53 53 00 00",
+        "  0x0000F020  DE AD BE EF  00 01 02 03  7C 00 55 AA  4F 4B 00 00",
+        "  0x0000F030  00 00 10 00  00 00 20 00  00 00 40 00  00 80 00 00",
+        "  0x0000F040  41 43 4B 20  44 49 53 50  4C 41 59 20  4F 4B 00 00",
+        "  0x0000F050  49 4E 50 55  54 20 52 44  59 00 00 00  FF FF 00 01",
+    ]
+    for line in dumps:
+        put_line(line)
+        if pause(random.uniform(0.04, 0.07)):
+            return True
+    if pause(0.14):
+        return True
+    put_line()
+    put_line("LOADING MODULES")
+    modules = [
+        "  [OK]  KERNEL.CORE",
+        "  [OK]  MEM.MGR",
+        "  [OK]  DISPLAY.DRV",
+        "  [OK]  INPUT.DRV",
+        "  [OK]  STORAGE.DRV",
+        "  [OK]  POWER.MGR",
+    ]
+    for line in modules:
+        put_line(line)
+        if pause(random.uniform(0.05, 0.09)):
+            return True
+    if pause(0.18):
+        return True
+    put_line()
+    if type_line("INITIALIZING..."):
+        return True
+    if dots_line("  CLOCK ..............", n=1, ok=" SET", step=0.08):
+        return True
+    if dots_line("  DISPLAY ............", n=1, ok=" 320x240", step=0.08):
+        return True
+    if dots_line("  LOOKUP TABLES ......", n=1, ok=" BUILT", step=0.08):
+        return True
+    if pause(0.20):
+        return True
+    put_line()
+    if type_line("ALL SYSTEMS NOMINAL."):
+        return True
+
+    elapsed = time.monotonic() - start
+    if elapsed < BOOT_SECS:
+        if pause(BOOT_SECS - elapsed):
+            return True
+    return skipped
+
+
+def show_splash() -> None:
+    set_phase("splash")
+    blank()
+    c, r = cols(), rows()
+    lines = list(SPLASH)
+    width = max((len(line) for line in lines), default=0)
+    top = max(0, (r - len(lines)) // 2)
+    left = max(0, (c - width) // 2)
+    write(STYLE + HIDE + WRAP_OFF)
+    write("\n" * top)
+    for line in lines:
+        write(" " * left + line + "\n")
+    sys.stdout.flush()
+    pause(SPLASH_SECS)
+
+
+def crt_power_on() -> None:
+    """CRT tube-TV power-on over the window.
+
+    Drawn by the wasteland.lock shell plugin; fire-and-forget, and silently does
+    nothing if the shell is not up yet.
+    """
+    try:
+        import subprocess
+        subprocess.Popen(
+            ["omarchy-shell", "-q", "lock", "crtOn"],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, start_new_session=True,
+        )
+    except Exception:
+        pass
+
+
+def run_animation() -> int:
+    setup_tty()
+    try:
+        write(HIDE + STYLE + CLEAR)
+        sys.stdout.flush()
+        crt_power_on()
+        # Let the beam open on the black screen before the boot text starts.
+        if pause(0.45):
+            return 0
+        if not run_boot():
+            show_splash()
+        return 0
+    finally:
+        restore()
+
+
+def extras_state() -> dict:
+    """Written by the Wasteland theme's theme-set hook. Missing or unreadable means everything off."""
+    import json
+    path = os.path.join(os.path.expanduser("~"), ".local/state/omarchy/wasteland-extras.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def main() -> int:
+    if "--direct" not in sys.argv and "--force" not in sys.argv:
+        state = extras_state()
+        if state.get("boot") is not True:
+            # Boot animation off (not Wasteland, or BOOT=0). Keep the CRT
+            # power-on at login if that feature is still on.
+            if state.get("crt") is True:
+                crt_power_on()
+            return 0
+    if "--direct" not in sys.argv:
+        if not _exe(GHOSTTY) and not _exe(FOOT):
+            print("ghostty/foot not found; running in this terminal", file=sys.stderr)
+            return run_animation()
+        launch_window()
+        return 1
+    return run_animation()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

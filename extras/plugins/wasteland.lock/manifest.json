@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "wasteland.lock",
+  "name": "Wasteland Lock Screen",
+  "version": "1.0.0",
+  "author": "Matt Volz",
+  "description": "Lock screen (clone of omarchy.lock): Wasteland terminal view and CRT power effects while the Wasteland theme is on; Omarchy's stock view without blur otherwise.",
+  "omarchy": {
+    "capabilities": [
+      "authentication"
+    ],
+    "clonedFrom": "omarchy.lock"
+  },
+  "kinds": [
+    "service"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml"
+  }
+}

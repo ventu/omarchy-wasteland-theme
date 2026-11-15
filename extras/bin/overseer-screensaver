@@ -1,0 +1,385 @@
+#!/usr/bin/env python3
+"""Wasteland theme screensaver: an overseer terminal left running.
+
+Green text slowly types out terminal log entries beside a radiation trefoil,
+in the muted Wasteland phosphor palette. Runs inside the screensaver terminal
+that omarchy-launch-screensaver opens on every monitor (window class
+org.omarchy.screensaver), launched by ../bin/wasteland-screensaver.
+
+Low CPU: it sleeps in select() between characters and lines (no busy loop).
+Any key, mouse movement or click, or the window losing focus ends it on every
+monitor, the same way Omarchy's stock screensaver does.
+
+All text here is original.
+"""
+import os
+import random
+import select
+import signal
+import subprocess
+import sys
+import termios
+import time
+import tty
+from datetime import datetime
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+ASSETS = os.path.join(os.path.dirname(HERE), "assets")
+
+BG = (0x0B, 0x0E, 0x09)
+TREFOIL = [(0x8F, 0xBF, 0x6A), (0x7F, 0x9A, 0x6A)]   # gentle two-step phosphor pulse
+TEXT = (0x7F, 0x9A, 0x6A)
+BRIGHT = (0x8F, 0xBF, 0x6A)
+DIM = (0x4E, 0x5E, 0x42)
+
+CHAR_DELAY = 0.045       # seconds per typed character
+FOCUS_CHECK = 2.0        # seconds between "are we still focused" checks
+PULSE = 3.0              # seconds between trefoil pulse steps
+
+out_fd = sys.stdout.fileno()
+in_fd = sys.stdin.fileno()
+
+
+def fg(rgb):
+    return "\033[38;2;%d;%d;%dm" % rgb
+
+
+def write(s):
+    os.write(out_fd, s.encode("utf-8", "replace"))
+
+
+def move(row, col):
+    return "\033[%d;%dH" % (row + 1, col + 1)
+
+
+class Quit(Exception):
+    pass
+
+
+def hypr(*args):
+    try:
+        return subprocess.run(["hyprctl", *args], capture_output=True, text=True, timeout=2).stdout
+    except Exception:
+        return ""
+
+
+def set_cursor_invisible(on):
+    v = "true" if on else "false"
+    if "ok" not in hypr("eval", "hl.config({ cursor = { invisible = %s } })" % v).lower():
+        hypr("keyword", "cursor:invisible", v)
+
+
+def focused():
+    if os.environ.get("WASTELAND_NO_FOCUS_CHECK") == "1":  # for recording a preview
+        return True
+    out = hypr("activewindow", "-j")
+    if not out:
+        return True  # can't tell; don't quit on a hyprctl hiccup
+    return '"org.omarchy.screensaver"' in out
+
+
+# --- content (original text) ------------------------------------------------
+
+def stamp(offset_min=0):
+    t = datetime.now()
+    mins = t.hour * 60 + t.minute + offset_min
+    return "%02d.%s.2077 %02d:%02d" % (t.day, t.strftime("%b").upper(), (mins // 60) % 24, mins % 60)
+
+
+VAULT = random.choice([13, 42, 77, 88, 109, 211])
+
+PAGES = [
+    ("OVERSEER LOG", [
+        "Population steady at {n} residents. Morale: fair.",
+        "Hydroponics bay 2 yielded {n} kg of tatos. Rationing eased.",
+        "Water purifier output {p}%. Filter swap scheduled.",
+        "Door seal pressure nominal. Nobody in, nobody out.",
+        "Security reports raider smoke {n} km to the east.",
+        "Resident vote: movie night stays on Fridays.",
+        "Medbay stock: {n} med kits, {m} anti-rad packs. Reorder pending.",
+        "Children's G.O.A.T. practice exam passed. Mostly.",
+        "Generator room humming again after coolant flush.",
+        "Note to self: stop letting the cat into the reactor wing.",
+    ]),
+    ("REACTOR STATUS", [
+        "Core temp {t} C ........................ NOMINAL",
+        "Coolant loop A flow {p}% ................. OK",
+        "Coolant loop B flow {p}% ................. OK",
+        "Fusion cell reserve {n} units ............ OK",
+        "Shield integrity {p}% .................... OK",
+        "Ambient radiation {r} mSv/h .............. LOW",
+        "Backup turbine spin-up test .............. PASS",
+        "Grid load {p}% ........................... STABLE",
+    ]),
+    ("RADIO INTERCEPT", [
+        "...repeat, caravan at the old overpass by dusk...",
+        "...anyone copy? Settlement needs a mechanic...",
+        "...static... {n}.{m} MHz ...static...",
+        "...trader says the bridge is out, take the river road...",
+        "...storm moving north, stay under cover until it clears...",
+        "...automated beacon, signal strength {p}%...",
+        "...music request: something with a trumpet in it...",
+    ]),
+    ("MAINTENANCE QUEUE", [
+        "#{n}  Atrium light flicker ............. OPEN",
+        "#{n}  Cafeteria cola dispenser jam ..... CLOSED",
+        "#{n}  Air scrubber 3 belt worn ......... IN PROGRESS",
+        "#{n}  Elevator B squeaks ............... WONTFIX",
+        "#{n}  Lab 4 door code reset ............ CLOSED",
+        "#{n}  Geiger counter calibration ....... OPEN",
+        "#{n}  Barber chair hydraulics .......... OPEN",
+    ]),
+    ("SURFACE SCAN", [
+        "Sector {n}: dust storm, visibility {m} m.",
+        "Sector {n}: radiation {r} mSv/h, rising.",
+        "Sector {n}: brahmin herd moving south.",
+        "Sector {n}: no movement detected.",
+        "Sector {n}: old highway signs still standing.",
+        "Sector {n}: rain. First in {m} days.",
+    ]),
+]
+
+
+def fill(line):
+    return line.format(
+        n=random.randint(2, 480), m=random.randint(3, 90), p=random.randint(86, 100),
+        t=random.randint(410, 470), r="%.2f" % random.uniform(0.05, 0.9))
+
+
+# --- drawing ---------------------------------------------------------------
+
+def load_art(max_w, max_h):
+    best = None
+    for w in (30, 40, 50, 60, 70):
+        path = os.path.join(ASSETS, "trefoil-%d.txt" % w)
+        try:
+            lines = open(path, encoding="utf-8").read().rstrip("\n").split("\n")
+        except OSError:
+            continue
+        aw = max(len(line) for line in lines)
+        if aw <= max_w and len(lines) <= max_h:
+            best = lines
+    return best or []
+
+
+class Screen:
+    def __init__(self):
+        self.pulse = 0
+        self.layout()
+
+    def layout(self):
+        size = os.get_terminal_size(out_fd)
+        self.cols, self.rows = size.columns, size.lines
+        wide = self.cols >= 90
+        if wide:
+            self.art = load_art(int(self.cols * 0.38), self.rows - 4)
+        else:
+            self.art = load_art(self.cols - 4, max(6, self.rows // 2 - 2))
+        aw = max((len(line) for line in self.art), default=0)
+        ah = len(self.art)
+        if wide:
+            gap = max(4, self.cols // 20)
+            block = aw + gap + min(64, self.cols - aw - gap - 4)
+            left = max(2, (self.cols - block) // 2)
+            self.art_pos = (max(0, (self.rows - ah) // 2), left)
+            self.text_col = left + aw + gap
+            self.text_w = max(20, min(64, self.cols - self.text_col - 2))
+            self.text_top = max(1, (self.rows - min(self.rows - 2, 22)) // 2)
+            self.text_rows = min(self.rows - 2, 22)
+        else:
+            self.art_pos = (1, max(0, (self.cols - aw) // 2))
+            self.text_col = 2
+            self.text_w = self.cols - 4
+            self.text_top = ah + 3
+            self.text_rows = max(4, self.rows - self.text_top - 1)
+
+    def draw_art(self):
+        # Save and restore the cursor and colour (DECSC/DECRC): the pulse
+        # redraws the art in the middle of a typed line.
+        r0, c0 = self.art_pos
+        buf = ["\0337", fg(TREFOIL[self.pulse])]
+        for i, line in enumerate(self.art):
+            buf.append(move(r0 + i, c0) + line)
+        buf.append("\0338")
+        write("".join(buf))
+
+    def clear(self):
+        write("\033[48;2;%d;%d;%dm\033[2J" % BG)
+        self.draw_art()
+
+    def clear_text(self):
+        blank = " " * self.text_w
+        write("".join(move(self.text_top + i, self.text_col) + blank for i in range(self.text_rows)))
+
+
+class Saver:
+    def __init__(self):
+        self.screen = Screen()
+        self.resized = False
+        self.next_focus = time.monotonic() + FOCUS_CHECK
+        self.next_pulse = time.monotonic() + PULSE
+
+    def wait(self, seconds):
+        """Sleep, but wake for input (quit), resize, focus loss, and pulse."""
+        end = time.monotonic() + seconds
+        while True:
+            now = time.monotonic()
+            if self.resized:
+                raise Resize()
+            if now >= self.next_focus:
+                self.next_focus = now + FOCUS_CHECK
+                if not focused():
+                    raise Quit()
+            if now >= self.next_pulse:
+                self.next_pulse = now + PULSE
+                self.screen.pulse ^= 1
+                self.screen.draw_art()
+            left = end - now
+            if left <= 0:
+                return
+            timeout = min(left, self.next_focus - now, self.next_pulse - now)
+            try:
+                ready, _, _ = select.select([in_fd], [], [], max(0.0, timeout))
+            except InterruptedError:
+                continue
+            if ready:
+                raise Quit()
+
+    def type_line(self, row, text, color, speed=CHAR_DELAY):
+        s = self.screen
+        text = text[: s.text_w - 1]
+        write(move(s.text_top + row, s.text_col) + fg(color))
+        for ch in text:
+            write(ch + fg(BRIGHT) + "\u2588\b" + fg(color))
+            self.wait(speed * random.uniform(0.6, 1.5) if ch != " " else speed * 0.5)
+        write(" ")
+
+    def blink(self, row, col, seconds):
+        s = self.screen
+        end = time.monotonic() + seconds
+        on = True
+        while time.monotonic() < end:
+            write(move(s.text_top + row, s.text_col + col) + fg(BRIGHT) + ("\u2588" if on else " "))
+            on = not on
+            self.wait(min(0.5, max(0.0, end - time.monotonic())))
+        write(move(s.text_top + row, s.text_col + col) + " ")
+
+    def page(self, title, lines):
+        s = self.screen
+        s.clear_text()
+        header = [
+            ("WASTELAND SYSTEMS TERMINAL v2.077", BRIGHT),
+            ("VAULT %d  //  %s" % (VAULT, title), BRIGHT),
+            ("-" * min(s.text_w - 2, 44), DIM),
+        ]
+        row = 0
+        for text, color in header:
+            self.type_line(row, text, color, CHAR_DELAY * 0.6)
+            row += 1
+        row += 1
+        self.type_line(row, "> OPEN LOG/%s" % title.replace(" ", "_"), TEXT)
+        row += 2
+        pool = lines[:]
+        random.shuffle(pool)
+        offset = -random.randint(30, 300)
+        while row < s.text_rows - 2 and pool:
+            offset += random.randint(3, 40)
+            entry = fill(pool.pop())
+            if s.text_w >= 48:
+                write(move(s.text_top + row, s.text_col) + fg(DIM) + "[" + stamp(offset) + "]")
+                row += 1
+            self.type_line(row, "  " + entry, TEXT)
+            row += 1
+            self.wait(random.uniform(0.6, 1.8))
+        row = min(row, s.text_rows - 1)
+        self.type_line(row, "> _", TEXT, CHAR_DELAY)
+        self.blink(row, 2, 6.0)
+
+    def run(self):
+        self.screen.clear()
+        order = PAGES[:]
+        random.shuffle(order)
+        i = 0
+        while True:
+            try:
+                title, lines = order[i % len(order)]
+                self.page(title, lines)
+                i += 1
+            except Resize:
+                self.resized = False
+                self.screen.layout()
+                self.screen.clear()
+
+
+class Resize(Exception):
+    pass
+
+
+def wait_for_resize():
+    # Terminals start at 80x24 and resize once the compositor sizes the window.
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        size = os.get_terminal_size(out_fd)
+        if (size.columns, size.lines) != (80, 24):
+            return
+        time.sleep(0.02)
+
+
+def main():
+    old = None
+    saver = None
+    try:
+        old = termios.tcgetattr(in_fd)
+        tty.setcbreak(in_fd)
+        new = termios.tcgetattr(in_fd)
+        new[3] &= ~termios.ECHO
+        termios.tcsetattr(in_fd, termios.TCSANOW, new)
+    except termios.error:
+        old = None
+
+    def on_term(*_):
+        raise Quit()
+
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT):
+        signal.signal(sig, on_term)
+
+    # Black-green background, hidden cursor, alternate screen, and mouse
+    # reporting (any motion, SGR) so moving the mouse counts as input.
+    # WASTELAND_NO_FOCUS_CHECK=1 is preview mode (for screenshots): no focus
+    # check and no mouse reporting, so only a key press ends it.
+    preview = os.environ.get("WASTELAND_NO_FOCUS_CHECK") == "1"
+    write("\033]11;rgb:%02x/%02x/%02x\007" % BG)
+    write("\033[?1049h\033[?25l" + ("" if preview else "\033[?1003h\033[?1006h"))
+    if not preview:
+        set_cursor_invisible(True)
+    try:
+        wait_for_resize()
+        saver = Saver()
+
+        def on_winch(*_):
+            saver.resized = True
+
+        signal.signal(signal.SIGWINCH, on_winch)
+        saver.run()
+    except (Quit, KeyboardInterrupt):
+        pass
+    finally:
+        for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+            signal.signal(sig, signal.SIG_IGN)
+        try:
+            write("\033[?1003l\033[?1006l\033[?25h\033[0m\033[?1049l")
+        except OSError:
+            pass
+        if old is not None:
+            try:
+                termios.tcsetattr(in_fd, termios.TCSANOW, old)
+            except termios.error:
+                pass
+        if not preview:
+            set_cursor_invisible(False)
+            # Close the screensaver on every monitor, like the stock one does.
+            subprocess.run(["pkill", "-f", "[o]rg.omarchy.screensaver"], check=False)
+
+
+if __name__ == "__main__":
+    main()
