@@ -13,7 +13,7 @@ as well. Low-heat by design: no blur, transparency or shaders anywhere.
 
 ## Install the theme
 
-    omarchy theme install https://github.com/<you>/omarchy-wasteland-theme
+    omarchy theme install https://github.com/ventu/omarchy-wasteland-theme
 
 Or use **Install > Style > Theme** in the Omarchy menu and paste the URL.
 The theme shows up as **Wasteland** in the theme picker (`Super + Ctrl + T`).

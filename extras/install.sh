@@ -10,7 +10,7 @@
 # locked. Everything it replaces is copied to
 # ~/.local/state/omarchy/wasteland-backups/<timestamp>/ first.
 #
-# Install the theme first:  omarchy theme install https://github.com/<you>/omarchy-wasteland-theme
+# Install the theme first:  omarchy theme install https://github.com/ventu/omarchy-wasteland-theme
 # Then:                     bash ~/.config/omarchy/themes/wasteland/extras/install.sh
 set -euo pipefail
 
