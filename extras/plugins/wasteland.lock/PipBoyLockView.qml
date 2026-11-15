@@ -220,7 +220,7 @@ Item {
 
   Image {
     anchors.fill: parent
-    source: Qt.resolvedUrl("scanlines.png")
+    source: Qt.resolvedUrl("pipboy-scanlines.png")
     fillMode: Image.Tile
     smooth: false
     asynchronous: true
@@ -257,7 +257,7 @@ Item {
       anchors.left: parent.left
       anchors.verticalCenter: parent.verticalCenter
       textFormat: Text.PlainText
-      text: "WASTELAND TERMINAL  V1.0"
+      text: "PIP-OS(R)  V7.1.0.8"
       color: root.colorPhosphor
       font.family: root.monoFont
       font.pixelSize: Math.round(15 * root.ui)
@@ -285,7 +285,7 @@ Item {
     }
   }
 
-  // Decorative wrist-terminal tabs
+  // Decorative Pip-Boy tabs
   Row {
     id: tabRow
     anchors.top: header.bottom
@@ -335,9 +335,9 @@ Item {
 
     Image {
       anchors.horizontalCenter: parent.horizontalCenter
-      source: Qt.resolvedUrl("terminal-emblem.svg")
-      height: Math.round(150 * root.ui)
-      width: Math.round(height * 240 / 200)
+      source: Qt.resolvedUrl("pipboy-mascot.png")
+      height: Math.round(180 * root.ui)
+      width: Math.round(height * 369 / 520)
       sourceSize.width: width * 2
       sourceSize.height: height * 2
       smooth: true

@@ -48,23 +48,23 @@ Item {
   property bool previewVisible: false
 
   // Wasteland theme bundle (Nov 15, 2026). The Wasteland theme's theme-set
-  // hook (themes/wasteland/extras/on-theme-set) writes this file: terminal
+  // hook (themes/wasteland/extras/on-theme-set) writes this file: Pip-Boy
   // lock view and CRT effects on with Wasteland, off with any other theme.
   // Per-feature switches: themes/wasteland/extras/features.conf. A missing or
   // unreadable file means everything off (stock lock view), never no lock.
   readonly property string extrasStatePath: stateHome + "/omarchy/wasteland-extras.json"
-  property bool extrasTerminalLock: false
+  property bool extrasPipBoyLock: false
   property bool extrasCrt: false
 
   function applyExtras(text) {
-    var term = false
+    var pip = false
     var crt = false
     try {
       var j = JSON.parse(text || "{}")
-      term = j.lockView === "terminal"
+      pip = j.lockView === "pipboy"
       crt = j.crt === true
     } catch (e) {}
-    extrasTerminalLock = term
+    extrasPipBoyLock = pip
     extrasCrt = crt
     try { if (!crt) crtCancel() } catch (e) {}
   }
@@ -628,18 +628,18 @@ Item {
 
       color: Commons.Color.background
 
-      // terminal view with the Wasteland theme, stock (blur-free) view otherwise.
+      // Pip-Boy view with the Wasteland theme, stock (blur-free) view otherwise.
       // Both are compiled with this file, so neither can fail to load at lock time.
       Loader {
         id: lockView
         anchors.fill: parent
         focus: true
-        sourceComponent: root.extrasTerminalLock ? terminalLockComponent : stockLockComponent
+        sourceComponent: root.extrasPipBoyLock ? pipBoyLockComponent : stockLockComponent
       }
 
       Component {
-        id: terminalLockComponent
-        TerminalLockView {
+        id: pipBoyLockComponent
+        PipBoyLockView {
           backgroundPath: root.backgroundPath
           videoPosterPath: root.videoPosterPath
           backgroundVersion: root.backgroundVersion
@@ -699,12 +699,12 @@ Item {
 
     Loader {
       anchors.fill: parent
-      sourceComponent: root.extrasTerminalLock ? terminalPreviewComponent : stockPreviewComponent
+      sourceComponent: root.extrasPipBoyLock ? pipBoyPreviewComponent : stockPreviewComponent
     }
 
     Component {
-      id: terminalPreviewComponent
-      TerminalLockView {
+      id: pipBoyPreviewComponent
+      PipBoyLockView {
         backgroundPath: root.backgroundPath
         videoPosterPath: root.videoPosterPath
         backgroundVersion: root.backgroundVersion

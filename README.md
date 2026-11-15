@@ -27,7 +27,7 @@ Chromium, VS Code and the Omarchy shell all take their colours from
 | | |
 |---|---|
 | ![Lock screen](images/lock.png) | ![Screensaver](images/screensaver.png) |
-| **Terminal lock screen.** Wrist-terminal styling, plus a CRT power-off when it locks and a power-on when it unlocks. | **Overseer screensaver.** Terminal logs type out slowly beside a radiation trefoil. It uses almost no CPU. |
+| **Pip-Boy lock screen.** PIP-OS styling with the Vault Boy mascot, plus a CRT power-off when it locks and a power-on when it unlocks. | **Overseer screensaver.** Terminal logs type out slowly beside a radiation trefoil. It uses almost no CPU. |
 | ![Boot animation](images/boot.png) | ![Boot splash](images/boot-splash.png) |
 | **Boot animation** after login (press any key to skip). | It ends on a splash, then the desktop powers on. |
 
@@ -72,7 +72,7 @@ Run it again after `omarchy theme update` to pick up new plugin versions.
 Edit `~/.config/omarchy/wasteland/features.conf`:
 
     BOOT=1          # boot animation after login
-    LOCK_VIEW=1     # terminal lock screen (0 = Omarchy-style lock, no blur)
+    LOCK_VIEW=1     # Pip-Boy lock screen (0 = Omarchy-style lock, no blur)
     CRT=1           # tube-TV power-off/on: lock, unlock, login, shutdown, reboot
     SCREENSAVER=1   # overseer screensaver
     BAR_TABS=1      # STAT INV DATA MAP RADIO workspace tabs
@@ -125,13 +125,18 @@ scripts live in the theme folder.
 
 ## Credits
 
-- Theme, wallpaper, trefoil drawing, wrist-terminal emblem, and all boot,
-  lock and screensaver text by Matt Volz. All are original. The wallpaper was
+- Theme, wallpaper, trefoil drawing, and all boot and screensaver text by
+  Matt Volz. All are original. The wallpaper was
   generated from scratch, with no third-party art or logos. The trefoil is the
   standard radiation hazard symbol, newly drawn.
 - The extras plugins are modified copies of Omarchy's own shell plugins,
   © David Heinemeier Hansson, MIT licensed. See `NOTICE.md`.
-- Not affiliated with or endorsed by any game studio or by Omarchy.
+- Vault Boy, Pip-Boy and PIP-OS are trademarks of Bethesda Softworks LLC
+  (Fallout). The lock screen mascot
+  (`extras/plugins/wasteland.lock/pipboy-mascot.png`) and the PIP-OS lock text
+  are non-commercial fan art. They are not covered by this theme's MIT license.
+  This theme is not affiliated with or endorsed by Bethesda or ZeniMax.
+- Not affiliated with or endorsed by Omarchy.
 
 ## License
 

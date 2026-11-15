@@ -41,7 +41,7 @@ fi
 
 flag() { [[ $1 == 1 ]] && echo true || echo false; }
 view=stock
-[[ $LOCK_VIEW == 1 ]] && view=terminal
+[[ $LOCK_VIEW == 1 ]] && view=pipboy
 
 mkdir -p "$STATE_DIR"
 existed=0
