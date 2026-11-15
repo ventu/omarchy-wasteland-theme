@@ -1,15 +1,16 @@
 # Wasteland
 
-A dark, muted post-apocalyptic theme for [Omarchy](https://omarchy.org): dusty
-olive, rust and amber instead of bright phosphor green. It's an original theme
-inspired by retro-futurist wasteland games.
+A dark, worn-in post-apocalyptic theme for [Omarchy](https://omarchy.org).
+Think dusty olive, rust and amber instead of the usual bright phosphor green.
+It's an original theme, inspired by retro-futurist wasteland games.
 
 ![Wasteland desktop](preview.png)
 
-The theme is the usual Omarchy kind: one `colors.toml`, one original wallpaper
-and an icon set. It works on its own. An **optional extras add-on** in
-`extras/` goes further and themes the lock screen, screensaver, login and bar
-as well. Low-heat by design: no blur, transparency or shaders anywhere.
+At its core, it's a regular Omarchy theme: a `colors.toml`, an original
+wallpaper and an icon set, and that's all you need. If you want to go all in,
+the **optional extras** in `extras/` also dress up your lock screen,
+screensaver, login and bar. Everything is kept light on purpose, with no blur,
+transparency or shaders, so your laptop stays cool and quiet.
 
 ## Install the theme
 
@@ -18,58 +19,62 @@ as well. Low-heat by design: no blur, transparency or shaders anywhere.
 Or use **Install > Style > Theme** in the Omarchy menu and paste the URL.
 The theme shows up as **Wasteland** in the theme picker (`Super + Ctrl + T`).
 
-That's all the core theme needs. Terminal, Hyprland borders, btop, Neovim,
-Chromium, VS Code and the Omarchy shell all take their colours from
-`colors.toml`.
+That's it for the core theme. Your terminal, Hyprland borders, btop, Neovim,
+Chromium, VS Code and the Omarchy shell all pick up the new colors
+automatically.
 
 ## Optional extras
 
 | | |
 |---|---|
 | ![Lock screen](images/lock.png) | ![Screensaver](images/screensaver.png) |
-| **Pip-Boy lock screen.** PIP-OS styling with the Vault Boy mascot, plus a CRT power-off when it locks and a power-on when it unlocks. | **Overseer screensaver.** Terminal logs type out slowly beside a radiation trefoil. It uses almost no CPU. |
+| **Pip-Boy lock screen.** PIP-OS styling with the Vault Boy mascot. The screen switches off like an old CRT when you lock it and flickers back to life when you unlock. | **Overseer screensaver.** Terminal logs slowly type themselves out next to a radiation symbol, and it barely touches your CPU. |
 | ![Boot animation](images/boot.png) | ![Boot splash](images/boot-splash.png) |
-| **Boot animation** after login (press any key to skip). | It ends on a splash, then the desktop powers on. |
+| **Boot animation** that plays after you log in (press any key to skip it). | It finishes on a splash screen, then your desktop powers on. |
 
-**Bar:** workspaces 1-5 become STAT / INV / DATA / MAP / RADIO tabs (you can rename them; see [Customize tab names](#customize-tab-names)). A rust
-line runs under the bar, the Omarchy logo becomes a radiation trefoil (still
-the menu button), and the clock reads `15.NOV.2026 13:37`.
+**Bar:** Workspaces 1-5 turn into STAT / INV / DATA / MAP / RADIO tabs (you
+can rename them, see [Customize tab names](#customize-tab-names)). A rust-colored
+line runs under the bar, the Omarchy logo becomes a radiation symbol (it's
+still your menu button), and the clock reads like `15.NOV.2026 13:37`.
 
 ![Bar, left](images/bar-left.png)
 ![Bar, clock](images/bar-clock.png)
 
-The extras switch on only while Wasteland is the current theme. Pick any other
-theme and you get Omarchy's stock lock screen (without blur), screensaver,
-workspaces, clock and logo back automatically.
+The extras only kick in while Wasteland is your active theme. Switch to any
+other theme and Omarchy's normal lock screen (minus the blur), screensaver,
+workspaces, clock and logo come right back on their own.
 
 ### Install the extras
 
-Needs Omarchy 4.5 or newer. Tested on Omarchy 4.5.0-3 with Hyprland 0.56 on a
-MacBook Pro and a Lenovo laptop. Install the theme first, then:
+You'll need Omarchy 4.5 or newer. I've tested it on Omarchy 4.5.0-3 with
+Hyprland 0.56, on a MacBook Pro and a Lenovo laptop. Install the theme first,
+then run:
 
     bash ~/.config/omarchy/themes/wasteland/extras/install.sh
 
-The installer:
+Here's what the installer does, so there are no surprises:
 
-- refuses to run as root (no sudo needed) or while the screen is locked
-- copies everything it replaces to `~/.local/state/omarchy/wasteland-backups/<timestamp>/` first
-- copies five shell plugins to `~/.config/omarchy/plugins/`: `wasteland.lock`,
+- It won't run as root (you don't need sudo) or while your screen is locked.
+- Before changing anything, it backs up whatever it replaces to `~/.local/state/omarchy/wasteland-backups/<timestamp>/`.
+- It copies five shell plugins into `~/.config/omarchy/plugins/` (`wasteland.lock`,
   `wasteland.idle`, `wasteland.workspaces`, `wasteland.clock` and
-  `wasteland.menubutton`. It switches them on with `omarchy plugin enable`, so
-  Omarchy edits its own `shell.json`. The installer never writes it.
-- adds a theme-set hook, `~/.config/omarchy/hooks/theme-set.d/20-wasteland-extras`,
-  which turns the extras on and off as you change themes
-- adds `~/.config/hypr/wasteland.lua`, which holds the boot window and CRT
-  layer rules and the boot autostart, plus one
-  `require("hypr.wasteland")` line at the end of `~/.config/hypr/hyprland.lua`
-- links `~/.local/bin/wasteland-boot`
-- copies the feature switches to `~/.config/omarchy/wasteland/features.conf`
+  `wasteland.menubutton`) and turns them on with `omarchy plugin enable`.
+  Omarchy updates its own `shell.json`; the installer never touches it.
+- It adds a hook at `~/.config/omarchy/hooks/theme-set.d/20-wasteland-extras`
+  that turns the extras on and off as you switch themes.
+- It adds `~/.config/hypr/wasteland.lua` for the boot animation and CRT effects,
+  plus a single `require("hypr.wasteland")` line at the end of
+  `~/.config/hypr/hyprland.lua`.
+- It links `~/.local/bin/wasteland-boot`.
+- It puts your on/off switches in `~/.config/omarchy/wasteland/features.conf`.
 
-Run it again after `omarchy theme update` to pick up new plugin versions.
+After an `omarchy theme update`, just run the installer again to get the
+latest plugins.
 
-### Turn single extras off
+### Turn off the extras you don't want
 
-Edit `~/.config/omarchy/wasteland/features.conf`:
+Don't love one of the effects? Open `~/.config/omarchy/wasteland/features.conf`
+and set it to `0`:
 
     BOOT=1          # boot animation after login
     LOCK_VIEW=1     # Pip-Boy lock screen (0 = Omarchy-style lock, no blur)
@@ -79,9 +84,11 @@ Edit `~/.config/omarchy/wasteland/features.conf`:
     TAB_LABELS=STAT,INV,DATA,MAP,RADIO   # tab names, see below
     STATUS_STRIP=1  # rust line, trefoil menu button, Wasteland clock
 
-then run `omarchy theme set wasteland` again.
+Then run `omarchy theme set wasteland` again to apply it.
 
-### Try them without waiting
+### See them right now
+
+No need to wait for a reboot or the idle timer:
 
     ~/.local/bin/wasteland-boot --force                                      # boot animation
     ~/.config/omarchy/themes/wasteland/extras/bin/wasteland-screensaver force  # screensaver
@@ -91,53 +98,54 @@ then run `omarchy theme set wasteland` again.
 
     bash ~/.config/omarchy/themes/wasteland/extras/uninstall.sh
 
-This puts Omarchy's stock lock screen, idle service, workspaces, clock and menu
-button back through `omarchy plugin enable/disable`. It also moves the plugins,
-hook and Hyprland file into a backup folder and removes the `require` line.
-Add `--purge` to delete your `features.conf` too. Then pick another theme, or
-remove this one with `omarchy theme remove wasteland`.
+This brings back Omarchy's normal lock screen, idle service, workspaces, clock
+and menu button. It also tucks the Wasteland plugins, hook and Hyprland file
+into a backup folder and removes the `require` line. Add `--purge` if you want
+your `features.conf` deleted too. After that, pick another theme or remove this
+one with `omarchy theme remove wasteland`.
 
-Remove the extras **before** you remove the theme. The lock plugin keeps
-working without the theme (it falls back to the stock look), but the add-on
-scripts live in the theme folder.
+Be sure to remove the extras **before** the theme itself. The lock screen will
+still work without it (it just falls back to the normal look), but the
+add-on scripts live in the theme folder.
 
 ### Good to know
 
-- The extras clone four of Omarchy's own plugins (`omarchy.lock`, `omarchy.idle`,
-  `omarchy.workspaces`, `omarchy.clock`). A big Omarchy update may change
-  those. If something looks off after an update, run `uninstall.sh`, and
-  please open an issue.
-- If your bar already uses another workspaces or clock replacement, the
-  Wasteland one is added next to it rather than replacing it.
-- `omarchy theme install` drops `.lua` files and terminal configs from themes
-  installed from git. That's why the Hyprland rules are only installed by the
-  extras script, which you run yourself.
+- The extras are built on copies of four Omarchy plugins (`omarchy.lock`,
+  `omarchy.idle`, `omarchy.workspaces` and `omarchy.clock`), so a big Omarchy
+  update could change how they behave. If anything looks off after an update,
+  run `uninstall.sh` and please open an issue so I can fix it.
+- If you already use a different workspace or clock add-on, Wasteland's version
+  sits next to it instead of replacing it.
+- `omarchy theme install` skips `.lua` files and terminal configs when it
+  installs a theme from git. That's why the Hyprland rules come with the extras
+  script, which you run yourself.
 
 ## Customize tab names
 
-With the extras installed, the bar shows workspaces 1-5 as STAT / INV / DATA /
-MAP / RADIO. To use your own names:
+With the extras installed, your first five workspaces show up as STAT / INV /
+DATA / MAP / RADIO. Prefer your own names? Here's how:
 
 1. Open `~/.config/omarchy/wasteland/features.conf` (install.sh creates it).
-2. Edit or add the `TAB_LABELS` line. Names are comma-separated and go to
-   workspaces 1, 2, 3... in order, up to 10:
+2. Find (or add) the `TAB_LABELS` line and list your names, separated by
+   commas. They're assigned to workspaces 1, 2, 3 and so on, up to 10:
 
        TAB_LABELS=CODE,WEB,CHAT,MUSIC,MAIL
 
-   - Workspaces past the end of the list show their number. Leave a name
-     empty (`CODE,,CHAT`) to keep that workspace's number.
-   - Spaces around names are ignored, and quotes around the whole value are
-     optional. Short names keep the bar compact.
-   - `TAB_LABELS=` (blank) or deleting the line brings back the defaults.
+   - Any workspace without a name just shows its number. To skip one, leave
+     it blank, like `CODE,,CHAT`.
+   - Extra spaces don't matter, and quotes are optional. Shorter names keep
+     the bar tidy.
+   - To go back to the defaults, leave it blank (`TAB_LABELS=`) or delete the
+     line.
 
 3. Apply it:
 
        omarchy theme set wasteland
 
-   The bar updates within a second; no restart needed.
+   The bar updates within a second, with no restart needed.
 
-`BAR_TABS=0` in the same file turns the tabs off and shows plain workspace
-numbers. The lock screen keeps its own STAT / INV / DATA / MAP / RADIO tabs.
+If you'd rather have plain numbers, set `BAR_TABS=0` in the same file. The
+lock screen keeps its STAT / INV / DATA / MAP / RADIO tabs either way.
 
 ## Files
 
@@ -152,10 +160,10 @@ numbers. The lock screen keeps its own STAT / INV / DATA / MAP / RADIO tabs.
 
 ## Credits
 
-- Theme, wallpaper, trefoil drawing, and all boot and screensaver text by
-  Matt Volz. All are original. The wallpaper was
-  generated from scratch, with no third-party art or logos. The trefoil is the
-  standard radiation hazard symbol, newly drawn.
+- The theme, wallpaper, radiation symbol artwork, and all the boot and
+  screensaver text are original work by Matt Volz. The wallpaper was made from
+  scratch with no third-party art or logos, and the radiation symbol is the
+  standard hazard sign, drawn fresh for this theme.
 - The extras plugins are modified copies of Omarchy's own shell plugins,
   © David Heinemeier Hansson, MIT licensed. See `NOTICE.md`.
 - Vault Boy, Pip-Boy and PIP-OS are trademarks of Bethesda Softworks LLC
