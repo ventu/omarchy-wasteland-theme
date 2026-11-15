@@ -39,6 +39,35 @@ if [[ $THEME != "wasteland" ]]; then
   BOOT=0 LOCK_VIEW=0 CRT=0 SCREENSAVER=0 BAR_TABS=0 STATUS_STRIP=0
 fi
 
+# TAB_LABELS=STAT,INV,DATA,MAP,RADIO renames the bar's workspace tabs (1, 2, 3...).
+# Comma-separated, up to 10; blank means the defaults. Read as plain text.
+TAB_LABELS=""
+read_labels() {
+  local line
+  [[ -f $1 ]] || return 0
+  line=$(grep -E '^TAB_LABELS=' "$1" | tail -n 1)
+  [[ -n $line ]] && TAB_LABELS=${line#TAB_LABELS=}
+  return 0
+}
+labels_json() {
+  local raw=$1 out="" item
+  local -a items
+  raw=${raw%$'\r'}
+  raw="${raw#"${raw%%[![:space:]]*}"}"; raw="${raw%"${raw##*[![:space:]]}"}"
+  [[ $raw == \"*\" || $raw == \'*\' ]] && raw=${raw:1:${#raw}-2}
+  [[ -z ${raw//[[:space:],]/} ]] && return 0
+  IFS=',' read -ra items <<< "$raw"
+  for item in "${items[@]:0:10}"; do
+    item=$(printf '%s' "$item" | tr -d '\000-\037')
+    item="${item#"${item%%[![:space:]]*}"}"; item="${item%"${item##*[![:space:]]}"}"
+    item=${item//\\/\\\\}; item=${item//\"/\\\"}
+    out+="${out:+,}\"$item\""
+  done
+  printf ',"tabLabels":[%s]' "$out"
+}
+read_labels "$DIR/features.conf"
+read_labels "$USER_CONF"
+
 flag() { [[ $1 == 1 ]] && echo true || echo false; }
 view=stock
 [[ $LOCK_VIEW == 1 ]] && view=pipboy
@@ -47,8 +76,8 @@ mkdir -p "$STATE_DIR"
 existed=0
 [[ -f $STATE ]] && existed=1
 # Written in place (not renamed) so the plugins' file watches see it.
-printf '{"theme":"%s","boot":%s,"lockView":"%s","crt":%s,"screensaver":%s,"barTabs":%s,"statusStrip":%s}\n' \
-  "${THEME//\"/}" "$(flag "$BOOT")" "$view" "$(flag "$CRT")" "$(flag "$SCREENSAVER")" "$(flag "$BAR_TABS")" "$(flag "$STATUS_STRIP")" > "$STATE"
+printf '{"theme":"%s","boot":%s,"lockView":"%s","crt":%s,"screensaver":%s,"barTabs":%s,"statusStrip":%s%s}\n' \
+  "${THEME//\"/}" "$(flag "$BOOT")" "$view" "$(flag "$CRT")" "$(flag "$SCREENSAVER")" "$(flag "$BAR_TABS")" "$(flag "$STATUS_STRIP")" "$(labels_json "$TAB_LABELS")" > "$STATE"
 
 # The plugins only watch a file that existed when the shell started. install.sh
 # writes it before enabling them, so this is only a fallback. omarchy-restart-shell

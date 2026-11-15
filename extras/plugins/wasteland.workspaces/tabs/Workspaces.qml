@@ -21,7 +21,11 @@ BarWidget {
   // (BAR_TABS in ~/.config/omarchy/themes/wasteland/extras/features.conf,
   // written to wasteland-extras.json by its theme-set hook). Otherwise this is
   // the stock omarchy.workspaces widget. Horizontal bars only.
-  readonly property var tabLabels: ["STAT", "INV", "DATA", "MAP", "RADIO"]
+  // Tab names come from TAB_LABELS in features.conf (via wasteland-extras.json);
+  // these are the defaults. Workspaces past the end of the list, or with an
+  // empty name, show their number.
+  readonly property var defaultTabLabels: ["STAT", "INV", "DATA", "MAP", "RADIO"]
+  property var tabLabels: root.defaultTabLabels
   property bool extrasBarTabs: false
   readonly property bool tabs: root.extrasBarTabs && !root.vertical
 
@@ -38,7 +42,12 @@ BarWidget {
       var state = JSON.parse(String(text || "{}"))
       root.extrasBarTabs = state.barTabs === true
       root.extrasStatusStrip = state.statusStrip === true
+      var labels = state.tabLabels
+      root.tabLabels = Array.isArray(labels) && labels.length > 0
+        ? labels.map(function (label) { return String(label === null || label === undefined ? "" : label) })
+        : root.defaultTabLabels
     } catch (e) {
+      root.tabLabels = root.defaultTabLabels
       root.extrasBarTabs = false
       root.extrasStatusStrip = false
     }
@@ -55,7 +64,7 @@ BarWidget {
 
   function tabLabel(id, slot) {
     if (root.blockOf(id) !== root.block) return String(id)
-    if (slot <= root.tabLabels.length) {
+    if (slot <= root.tabLabels.length && root.tabLabels[slot - 1].length > 0) {
       var label = root.tabLabels[slot - 1]
       // With the strip, the active tab is bracketed like [STAT]; the others
       // keep the same width so the row doesn't shift.

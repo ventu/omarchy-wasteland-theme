@@ -31,7 +31,7 @@ Chromium, VS Code and the Omarchy shell all take their colours from
 | ![Boot animation](images/boot.png) | ![Boot splash](images/boot-splash.png) |
 | **Boot animation** after login (press any key to skip). | It ends on a splash, then the desktop powers on. |
 
-**Bar:** workspaces 1-5 become STAT / INV / DATA / MAP / RADIO tabs. A rust
+**Bar:** workspaces 1-5 become STAT / INV / DATA / MAP / RADIO tabs (you can rename them; see [Customize tab names](#customize-tab-names)). A rust
 line runs under the bar, the Omarchy logo becomes a radiation trefoil (still
 the menu button), and the clock reads `15.NOV.2026 13:37`.
 
@@ -76,6 +76,7 @@ Edit `~/.config/omarchy/wasteland/features.conf`:
     CRT=1           # tube-TV power-off/on: lock, unlock, login, shutdown, reboot
     SCREENSAVER=1   # overseer screensaver
     BAR_TABS=1      # STAT INV DATA MAP RADIO workspace tabs
+    TAB_LABELS=STAT,INV,DATA,MAP,RADIO   # tab names, see below
     STATUS_STRIP=1  # rust line, trefoil menu button, Wasteland clock
 
 then run `omarchy theme set wasteland` again.
@@ -111,6 +112,32 @@ scripts live in the theme folder.
 - `omarchy theme install` drops `.lua` files and terminal configs from themes
   installed from git. That's why the Hyprland rules are only installed by the
   extras script, which you run yourself.
+
+## Customize tab names
+
+With the extras installed, the bar shows workspaces 1-5 as STAT / INV / DATA /
+MAP / RADIO. To use your own names:
+
+1. Open `~/.config/omarchy/wasteland/features.conf` (install.sh creates it).
+2. Edit or add the `TAB_LABELS` line. Names are comma-separated and go to
+   workspaces 1, 2, 3... in order, up to 10:
+
+       TAB_LABELS=CODE,WEB,CHAT,MUSIC,MAIL
+
+   - Workspaces past the end of the list show their number. Leave a name
+     empty (`CODE,,CHAT`) to keep that workspace's number.
+   - Spaces around names are ignored, and quotes around the whole value are
+     optional. Short names keep the bar compact.
+   - `TAB_LABELS=` (blank) or deleting the line brings back the defaults.
+
+3. Apply it:
+
+       omarchy theme set wasteland
+
+   The bar updates within a second; no restart needed.
+
+`BAR_TABS=0` in the same file turns the tabs off and shows plain workspace
+numbers. The lock screen keeps its own STAT / INV / DATA / MAP / RADIO tabs.
 
 ## Files
 
