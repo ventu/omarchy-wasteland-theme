@@ -350,9 +350,11 @@ def main():
     preview = os.environ.get("WASTELAND_NO_FOCUS_CHECK") == "1"
     write("\033]11;rgb:%02x/%02x/%02x\007" % BG)
     write("\033[?1049h\033[?25l" + ("" if preview else "\033[?1003h\033[?1006h"))
-    if not preview:
-        set_cursor_invisible(True)
     try:
+        # Inside the try so a lock or kill arriving mid-call still runs the
+        # finally block and turns the pointer back on.
+        if not preview:
+            set_cursor_invisible(True)
         wait_for_resize()
         saver = Saver()
 
