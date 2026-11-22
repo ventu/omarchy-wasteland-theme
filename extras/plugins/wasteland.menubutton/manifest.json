@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "wasteland.menubutton",
   "name": "Wasteland Menu Button",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Matt Volz",
   "description": "The Omarchy menu button; shows a radiation trefoil instead of the Omarchy logo while the Wasteland status strip is on.",
   "kinds": [

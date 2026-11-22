@@ -1,0 +1,68 @@
+#!/bin/bash
+# Wasteland lock health check.
+#
+# wasteland.lock replaces Omarchy's lock service (omarchy.lock is disabled
+# while it is on). If an Omarchy update ever breaks the copy so it fails to
+# load, nothing would lock the screen. This checks that a lock service is
+# answering and, if wasteland.lock is enabled but no lock answers, turns
+# wasteland.lock off so Omarchy's own lock comes back, and says so.
+#
+# Run at login (hypr/wasteland.lua), after every theme switch (on-theme-set)
+# and at the end of install.sh. Waits for the shell to come up first. Never
+# touches anything while the screen is locked or the shell is down.
+#
+# Exit status: 0 a lock service is answering (or wasteland.lock is not
+# enabled), 1 it had to fall back to Omarchy's lock, 2 it could not tell.
+#
+# Set WASTELAND_NO_LOCK_FALLBACK=1 to only report, never switch plugins.
+set -uo pipefail
+
+HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+# shellcheck source=../lib/common.sh
+source "$HERE/../lib/common.sh"
+export OMARCHY_SHELL_IPC_TIMEOUT=${OMARCHY_SHELL_IPC_TIMEOUT:-5s}
+
+TAG=wasteland-lock-check
+log() { logger -t "$TAG" -- "$*" 2>/dev/null || true; [[ -t 2 ]] && echo "$TAG: $*" >&2; return 0; }
+notify() { command -v notify-send >/dev/null 2>&1 && notify-send -u critical -a Wasteland "$1" "$2" 2>/dev/null; return 0; }
+
+# 1. Wait up to ~30 s for the shell (at login, or right after a restart).
+for _ in $(seq 1 30); do wl_shell_up && break; sleep 1; done
+if ! wl_shell_up; then
+  log "shell not answering; nothing checked"
+  exit 2
+fi
+
+wl_plugin_enabled wasteland.lock || exit 0
+
+# 2. Give the lock service up to ~15 s to load.
+for _ in $(seq 1 15); do wl_lock_service_up && exit 0; sleep 1; done
+
+log "wasteland.lock is enabled but no lock service is answering"
+
+# Only act when Hyprland confirms the session is unlocked.
+if [[ $(wl_lock_state) != unlocked ]]; then
+  log "can't confirm the screen is unlocked; leaving plugins alone"
+  exit 2
+fi
+if [[ ${WASTELAND_NO_LOCK_FALLBACK:-0} == 1 ]]; then
+  notify "Wasteland lock screen isn't running" "Your screen won't lock. Run extras/uninstall.sh, or omarchy plugin disable wasteland.lock."
+  exit 1
+fi
+
+# 3. Fall back: disabling the copy brings Omarchy's original back; make sure.
+omarchy-plugin-disable wasteland.lock >/dev/null 2>&1 || true
+sleep 1
+if jq -e '(.disabledPlugins // []) | index("omarchy.lock")' "$WL_CONFIG/omarchy/shell.json" >/dev/null 2>&1; then
+  omarchy-plugin-enable omarchy.lock >/dev/null 2>&1 || true
+fi
+for _ in $(seq 1 10); do wl_lock_service_up && break; sleep 1; done
+
+if wl_lock_service_up; then
+  log "fell back to omarchy.lock"
+  notify "Wasteland lock screen failed to load" "Omarchy's lock screen is back on. After an Omarchy update, run extras/install.sh again; if it keeps failing, please open an issue."
+else
+  log "fell back to omarchy.lock, but no lock service is answering yet"
+  notify "No lock screen is running" "Wasteland's lock failed to load and Omarchy's hasn't come up yet. Try omarchy-restart-shell."
+fi
+exit 1

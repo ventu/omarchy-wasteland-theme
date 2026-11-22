@@ -54,7 +54,13 @@ then run:
 
 Here's what the installer does, so there are no surprises:
 
-- It won't run as root (you don't need sudo) or while your screen is locked.
+- It won't run as root (you don't need sudo), while your screen is locked, or
+  while the Omarchy shell isn't responding.
+- It stops if you already have another lock or idle plugin enabled (your own
+  copy of `omarchy.lock` or `omarchy.idle`, say), because two would run side by
+  side. It tells you which one and how to turn it off.
+- It tells you if PyGObject (`python-gobject`) is missing. Only the CRT
+  power-off before shutdown and reboot needs it.
 - Before changing anything, it backs up whatever it replaces to `~/.local/state/omarchy/wasteland-backups/<timestamp>/`.
 - It copies five shell plugins into `~/.config/omarchy/plugins/` (`wasteland.lock`,
   `wasteland.idle`, `wasteland.workspaces`, `wasteland.clock` and
@@ -69,7 +75,14 @@ Here's what the installer does, so there are no surprises:
 - It puts your on/off switches in `~/.config/omarchy/wasteland/features.conf`.
 
 After an `omarchy theme update`, just run the installer again to get the
-latest plugins.
+latest plugins. If you forget, you'll get a notification the next time you
+switch to Wasteland.
+
+The extras also check that a lock screen is running: at login, after every
+theme switch and at the end of the install. If `wasteland.lock` ever fails to
+load (after a big Omarchy update, say), Omarchy's own lock screen is turned
+back on and you get a notification, so your screen never goes without a lock.
+Details go to `journalctl --user -t wasteland-lock-check`.
 
 ### Turn off the extras you don't want
 
@@ -151,8 +164,9 @@ lock screen keeps its STAT / INV / DATA / MAP / RADIO tabs either way.
 
     colors.toml, icons.theme, backgrounds/, preview.png   the theme
     extras/install.sh, extras/uninstall.sh                optional add-on
+    extras/lib/common.sh, extras/VERSION                  shared paths and checks, extras version
     extras/plugins/wasteland.*                            shell plugins (QML)
-    extras/bin/                                           boot animation, screensaver
+    extras/bin/                                           boot animation, screensaver, lock check
     extras/assets/                                        trefoil artwork (SVG, PNG, text)
     extras/hooks/, extras/hypr/                           theme-set hook, Hyprland rules
     extras/features.conf, extras/on-theme-set             feature switches

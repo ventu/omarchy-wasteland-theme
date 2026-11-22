@@ -6,7 +6,7 @@ if [[ -f $SCRIPT ]]; then
   exec bash "$SCRIPT" "$@"
 fi
 # The Wasteland theme is gone: make sure everything it owned is off.
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy"
+STATE_DIR="$HOME/.local/state/omarchy"
 mkdir -p "$STATE_DIR"
 printf '{"theme":"%s","boot":false,"lockView":"stock","crt":false,"screensaver":false,"barTabs":false,"statusStrip":false}\n' "${1//\"/}" \
   > "$STATE_DIR/wasteland-extras.json"

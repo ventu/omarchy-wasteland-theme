@@ -24,3 +24,9 @@ hl.layer_rule({ match = { namespace = "^(wasteland-crt|omarchy-lock-preview)$" }
 -- Boot animation after login. It checks the Wasteland extras itself and exits
 -- at once when BOOT is off or another theme is in use.
 o.exec_on_start("sleep 1 && " .. o.launch(os.getenv("HOME") .. "/.local/bin/wasteland-boot"))
+
+-- Lock health check after login: if wasteland.lock failed to load (say, after
+-- an Omarchy update), it turns Omarchy's own lock screen back on and says so.
+-- Waits for the shell itself; does nothing if the theme folder is gone.
+local lock_check = os.getenv("HOME") .. "/.config/omarchy/themes/wasteland/extras/bin/wasteland-lock-check"
+o.exec_on_start("sleep 5; [ -x '" .. lock_check .. "' ] && '" .. lock_check .. "'")

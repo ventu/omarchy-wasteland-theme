@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "wasteland.workspaces",
   "name": "Wasteland Workspaces",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Matt Volz",
   "description": "Workspaces (clone of omarchy.workspaces): STAT/INV/DATA/MAP/RADIO tabs and the rust status strip while the Wasteland theme is on.",
   "kinds": [

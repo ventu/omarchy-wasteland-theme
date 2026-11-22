@@ -16,9 +16,11 @@ set -u
 
 THEME="${1:-}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy"
+# Fixed $HOME paths, as Omarchy itself uses: see lib/common.sh for why.
+STATE_DIR="$HOME/.local/state/omarchy"
 STATE="$STATE_DIR/wasteland-extras.json"
-USER_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/wasteland/features.conf"
+USER_CONF_DIR="$HOME/.config/omarchy/wasteland"
+USER_CONF="$USER_CONF_DIR/features.conf"
 
 BOOT=1 LOCK_VIEW=1 CRT=1 SCREENSAVER=1 BAR_TABS=1 STATUS_STRIP=1
 read_conf() {
@@ -84,5 +86,27 @@ printf '{"theme":"%s","boot":%s,"lockView":"%s","crt":%s,"screensaver":%s,"barTa
 # itself refuses to restart while the session is locked.
 if (( ! existed )); then
   setsid -f bash -c 'sleep 2; omarchy-restart-shell' >/dev/null 2>&1 < /dev/null
+fi
+
+# Plugins out of date: `omarchy theme update` refreshes this folder, but the
+# plugin copies in ~/.config/omarchy/plugins only change when install.sh runs.
+# Say so once per new version, only when the extras are installed at all.
+want=$({ tr -d "[:space:]" < "$DIR/VERSION"; } 2>/dev/null)
+if [[ -n $want && $THEME == wasteland && -d $HOME/.config/omarchy/plugins/wasteland.lock ]]; then
+  have=$({ tr -d "[:space:]" < "$USER_CONF_DIR/installed-version"; } 2>/dev/null)
+  told=$({ tr -d "[:space:]" < "$STATE_DIR/wasteland-stale-notified"; } 2>/dev/null)
+  if [[ $have != "$want" && $told != "$want" ]]; then
+    printf '%s\n' "$want" > "$STATE_DIR/wasteland-stale-notified"
+    command -v notify-send >/dev/null 2>&1 &&
+      notify-send -a Wasteland "Wasteland extras need updating" \
+        "The theme is at ${want}, the installed extras at ${have:-an older version}. Run: bash ~/.config/omarchy/themes/wasteland/extras/install.sh" \
+        >/dev/null 2>&1 &
+  fi
+fi
+
+# Make sure a lock screen is running (falls back to Omarchy's if
+# wasteland.lock failed to load). In the background: it waits on the shell.
+if [[ ${WASTELAND_NO_LOCK_CHECK:-0} != 1 && -x $DIR/bin/wasteland-lock-check ]]; then
+  setsid -f "$DIR/bin/wasteland-lock-check" >/dev/null 2>&1 < /dev/null
 fi
 exit 0
