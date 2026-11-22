@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "wasteland.idle",
   "name": "Wasteland Idle",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Matt Volz",
   "description": "Idle service (clone of omarchy.idle): runs the Wasteland overseer screensaver while the Wasteland theme is on.",
   "kinds": [

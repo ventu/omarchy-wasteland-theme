@@ -36,7 +36,7 @@ BarWidget {
   }
 
   FileView {
-    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/omarchy/wasteland-extras.json"
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/wasteland-extras.json"
     watchChanges: true
     printErrors: false
     onFileChanged: reload()

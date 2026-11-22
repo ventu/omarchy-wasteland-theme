@@ -15,12 +15,23 @@ DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 SAVER="$DIR/overseer-screensaver"
 STOCK="$(command -v omarchy-launch-screensaver)"
 
+# Falling back to the stock screensaver for a reason other than "turned off"
+# goes to the journal: journalctl --user -t wasteland-screensaver
+log() { logger -t wasteland-screensaver -- "$*" 2>/dev/null || true; }
+
 on=$(jq -r '.screensaver // false' "$STATE" 2>/dev/null)
-if [[ $1 == stock ]]; then
+if [[ ${1:-} == stock ]]; then
   shift
   on=false
 fi
-if [[ $on != true || ! -x $SAVER || -z $STOCK ]]; then
+if [[ $on == true && -z $STOCK ]]; then
+  log "omarchy-launch-screensaver not found; nothing to run"
+  exit 1
+fi
+if [[ $on == true && ! -x $SAVER ]]; then
+  log "overseer-screensaver missing or not executable at $SAVER; using the stock screensaver"
+fi
+if [[ $on != true || ! -x $SAVER ]]; then
   exec omarchy-launch-screensaver "$@"
 fi
 
@@ -31,6 +42,7 @@ copy="${XDG_RUNTIME_DIR:-/tmp}/wasteland-launch-screensaver"
 sed "s|-e omarchy-screensaver\$|-e $SAVER|" "$STOCK" > "$copy.tmp" && mv "$copy.tmp" "$copy"
 if [[ $(grep -c -- "-e $SAVER\$" "$copy") -lt 1 ]]; then
   # Upstream changed the launcher: fall back to the stock screensaver.
+  log "$STOCK no longer ends its terminal command with '-e omarchy-screensaver'; using the stock screensaver until Wasteland is updated"
   exec "$STOCK" "$@"
 fi
 exec bash "$copy" "$@"
